@@ -1,18 +1,156 @@
-#![feature(proc_macro_span)]
-
-use syn::{Ident, DeriveInput, LitStr};
-use syn::parse::{ParseBuffer};
-use syn::Token;
-use quote::{quote, ToTokens};
-use std::path::PathBuf;
-use proc_macro::{Span, TokenStream};
-use std::collections::HashMap;
+use syn::Ident;
+use quote::{quote, format_ident};
+use std::path::{PathBuf, Path};
 use xml::EventReader;
 use xml::reader::XmlEvent;
 use std::fs::File;
-use syn::token::Token;
 use syn::export::TokenStream2;
+use convert_case::{Case, Casing};
+use std::io::Write;
+use std::process::Command;
 
+const README: &[u8] = include_bytes!("README.txt");
+
+const HEAD_ANNOTATION: &[u8] = include_bytes!("head_annotation.rs");
+const BUILD_SCRIPT_HEAD_ANNOTATION: &[u8] = include_bytes!("build_script_head_annotation.rs");
+
+pub fn generate_bind_build_script<T: AsRef<Path>>(directory_path: T) {
+	generate_bind_recursive(&directory_path, true, false);
+	let mut path = PathBuf::from(directory_path.as_ref());
+	path.push("README_glade-bindgen.txt");
+	std::fs::write(&path, README).unwrap();
+	println!("cargo:rerun-if-changed={}", path.to_str().unwrap());
+}
+
+pub fn generate_bind_recursive<T: AsRef<Path>>(directory_path: T, build_script: bool, format: bool) -> bool { //true if need to include in tree
+	let read_dir = std::fs::read_dir(&directory_path).unwrap();
+	let mut modules = Vec::new();
+	let mut generated_token_streams = Vec::new();
+	for x in read_dir {
+		let dir_entry = x.unwrap();
+		let file_name = dir_entry.file_name().into_string().unwrap();
+		if file_name == "." || file_name == ".."{
+			continue;
+		}
+		if dir_entry.path().is_dir() {
+			if generate_bind_recursive(dir_entry.path(), build_script, format) {
+				modules.push(file_name);
+			}
+		} else if file_name.ends_with(".glade") {
+			//TODO regex
+			let name = format_ident!("{}", file_name.replace(".glade", "").to_case(Case::Pascal));
+			let file = File::open(dir_entry.path()).unwrap();
+			generated_token_streams.push(generate_bind(name, file, file_name));
+		}
+	}
+
+	if modules.is_empty() && generated_token_streams.is_empty() {
+		return false;
+	}
+	let mut token_stream = TokenStream2::new();
+	for x in modules {
+		let module = format_ident!("{}", x);
+		token_stream.extend(quote! {
+			pub mod #module;
+		});
+	}
+	for x in generated_token_streams {
+		token_stream.extend::<TokenStream2>(x.into());
+	}
+
+	let mut mod_path = PathBuf::from(directory_path.as_ref());
+	mod_path.push("mod.rs");
+
+	{
+		let mut mod_file = File::create(&mod_path).unwrap();
+		mod_file.write_all(if build_script {
+			BUILD_SCRIPT_HEAD_ANNOTATION
+		} else {
+			HEAD_ANNOTATION
+		}).unwrap();
+		mod_file.write_all(token_stream.to_string().as_bytes()).unwrap();
+	}
+
+	if format {
+		Command::new("rustfmt").args(&[std::fs::canonicalize(mod_path).unwrap()]).output()
+			.expect("failed to format");
+	}
+
+	true
+}
+
+pub fn generate_bind<T: AsRef<Path>>(name: Ident, file: File, file_include_dir: T) -> TokenStream2 {
+	let mut objects = TokenStream2::new();
+	let mut objects_new = TokenStream2::new();
+
+	let parser = EventReader::new(file);
+	for e in parser {
+		match e {
+			Ok(XmlEvent::StartElement { name, attributes, .. }) => {
+				if &name.local_name == "object" {
+					let id = attributes.iter().find(| attr | attr.name.local_name == "id");
+					if id.is_some() {
+						let class = attributes.iter().find(| attr | attr.name.local_name == "class");
+						if class.is_some() {
+							let class = class.unwrap().value.to_owned();
+							let class_ident = format_ident!("{}", class.replace("Gtk", ""));
+							let id = id.unwrap().value.to_owned();
+							let id_ident = format_ident!("{}", &id);
+							objects.extend::<TokenStream2>(quote!{
+								pub #id_ident: gtk::#class_ident,
+							}.into());
+							objects_new.extend::<TokenStream2>(quote! {
+								#id_ident: gtk::prelude::BuilderExtManual::get_object(&builder, #id).unwrap(),
+							})
+						}
+					}
+				}
+			}
+			Err(e) => {
+				println!("Error: {}", e);
+				break;
+			}
+			_ => {}
+		}
+	}
+
+	let include_str = format_ident!("include_str");
+	let thread_local = format_ident!("thread_local");
+
+	let include = file_include_dir.as_ref().to_str().unwrap();
+
+	let token_stream = quote!{
+		#[allow(dead_code)]
+		pub struct #name {
+			#objects
+		}
+
+		impl #name {
+			#thread_local! {
+				static OBJECTS: std::sync::Mutex<Option<std::rc::Rc<#name>>> = std::sync::Mutex::new(None);
+			}
+
+			pub fn get() -> std::rc::Rc<Self> {
+				Self::OBJECTS.with(| objects | {
+					let mut objects = objects.lock().unwrap();
+					if objects.is_none() {
+						objects.replace(std::rc::Rc::new(Self::new()));
+					}
+					objects.as_ref().unwrap().clone()
+				})
+			}
+
+			fn new() -> Self {
+				let builder = gtk::Builder::from_string(#include_str!(#include));
+				Self {
+					#objects_new
+				}
+			}
+		}
+	};
+	token_stream.into()
+}
+/*
 struct Args(Ident, LitStr);
 
 impl syn::parse::Parse for Args {
@@ -28,79 +166,11 @@ impl syn::parse::Parse for Args {
 pub fn include_glade(args: TokenStream) -> TokenStream {
 	let args: Args = syn::parse(args).unwrap();
 	let span = args.0.span();
-	let module = args.0;
-	let include = args.1.value();
-	let mut path = span.unwrap().source_file().path().parent().unwrap().to_owned();
-	path.push(include);
-
-	let file = File::open(&path).unwrap();
-
-	let parser = EventReader::new(file);
-	let mut map = HashMap::new();
-	for e in parser {
-		match e {
-			Ok(XmlEvent::StartElement { name, attributes, namespace }) => {
-				if &name.local_name == "object" {
-					let id = attributes.iter().find(| attr | attr.name.local_name == "id");
-					if id.is_some() {
-						let class = attributes.iter().find(| attr | attr.name.local_name == "class");
-						if class.is_some() {
-							let class_name = class.unwrap().value.to_owned();
-							let class_ident = syn::Ident::new(&class_name.replace("Gtk", ""), span);
-							map.insert(id.unwrap().value.to_owned(), class_ident);
-						}
-					}
-				}
-			}
-			Err(e) => {
-				println!("Error: {}", e);
-				break;
-			}
-			_ => {}
-		}
-	}
-
-	let file_data = std::fs::read_to_string(path).unwrap();
-
-	let mut objects = TokenStream2::new();
-
-	for (id, class_ident) in map.iter() {
-		let id_ident = syn::Ident::new(id, span);
-		objects.extend::<TokenStream2>(quote!{
-			mod #id_ident {
-				fn get() -> gtk::#class_ident {
-					super::get_builder().get_object(&stringify!(#id)).unwrap()
-				}
-			}
-		}.into());
-	};
-
-	let objects = Objects(objects);
-
-	let mut header = quote!{
-		mod #module {
-			static BUILDER: Option<gtk::Builder> = None;
-			fn get_builder() -> gtk::Builder {
-				if BUILDER.is_none() {
-					unsafe {
-						let builder_ptr = unsafe {
-                            std::mem::transmute::<&Option<gtk::Builder>, &mut Option<gtk::Builder>>(&BUILDER)
-						};
-						builder_ptr.replace(gtk::Builder::from_string(&stringify!(#file_data)))
-					}
-				}
-				BUILDER.unwrap()
-			}
-			#objects
-		}
-	};
-	header.into()
+	let name = args.0;
+	let file_include_dir = args.1.value();
+	let mut file_path = span.unwrap().source_file().path().parent().unwrap().to_owned();
+	file_path.push(&file_include_dir);
+	let file = File::open(file_path).unwrap();
+	generate_bind(name, file, file_include_dir)
 }
-
-struct Objects(TokenStream2);
-
-impl ToTokens for Objects {
-	fn to_tokens(&self, tokens: &mut TokenStream2) {
-		tokens.extend(self.0.clone());
-	}
-}
+*/
