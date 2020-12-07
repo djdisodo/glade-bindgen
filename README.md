@@ -26,3 +26,11 @@ fn main() {
     let button: gtk::Button = &Example::get().your_button_id;
     //you can use editor's autocompletion here ^^^^^^^^^^^^
 }
+```
+
+You can also use it as owned value
+```
+let example = Example::new();
+let button: gtk::Button = &example.your_button_id;
+//you can use editor's autocompletion here ^^^^^^
+```
