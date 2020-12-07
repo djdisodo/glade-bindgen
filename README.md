@@ -10,7 +10,8 @@ glade-bindgen = "0.1"
 ```
 #build.rs
 fn main() {
-	glade_bindgen::generate_bind_build_script("src/path_to_glade_files");
+    glade_bindgen::generate_bind_build_script("src/path_to_glade_files", true);
+    //disable generating get() method if false===========================^^^^
 }
 ```
 For example, if you have `example.glade` at `src/path_to_glade_files`,
