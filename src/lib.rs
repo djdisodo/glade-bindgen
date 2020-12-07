@@ -140,7 +140,7 @@ pub fn generate_bind<T: AsRef<Path>>(name: Ident, file: File, file_include_dir: 
 				})
 			}
 
-			fn new() -> Self {
+			pub fn new() -> Self {
 				let builder = gtk::Builder::from_string(#include_str!(#include));
 				Self {
 					#objects_new
