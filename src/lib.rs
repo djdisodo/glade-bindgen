@@ -14,15 +14,15 @@ const README: &[u8] = include_bytes!("README.txt");
 const HEAD_ANNOTATION: &[u8] = include_bytes!("head_annotation.rs");
 const BUILD_SCRIPT_HEAD_ANNOTATION: &[u8] = include_bytes!("build_script_head_annotation.rs");
 
-pub fn generate_bind_build_script<T: AsRef<Path>>(directory_path: T) {
-	generate_bind_recursive(&directory_path, true, false);
+pub fn generate_bind_build_script<T: AsRef<Path>>(directory_path: T, static_value: bool) {
+	generate_bind_recursive(&directory_path, true, false, static_value);
 	let mut path = PathBuf::from(directory_path.as_ref());
 	path.push("README_glade-bindgen.txt");
 	std::fs::write(&path, README).unwrap();
 	println!("cargo:rerun-if-changed={}", path.to_str().unwrap());
 }
 
-pub fn generate_bind_recursive<T: AsRef<Path>>(directory_path: T, build_script: bool, format: bool) -> bool { //true if need to include in tree
+pub fn generate_bind_recursive<T: AsRef<Path>>(directory_path: T, build_script: bool, format: bool, static_value: bool) -> bool { //true if need to include in tree
 	let read_dir = std::fs::read_dir(&directory_path).unwrap();
 	let mut modules = Vec::new();
 	let mut generated_token_streams = Vec::new();
@@ -33,14 +33,14 @@ pub fn generate_bind_recursive<T: AsRef<Path>>(directory_path: T, build_script: 
 			continue;
 		}
 		if dir_entry.path().is_dir() {
-			if generate_bind_recursive(dir_entry.path(), build_script, format) {
+			if generate_bind_recursive(dir_entry.path(), build_script, format, static_value) {
 				modules.push(file_name);
 			}
 		} else if file_name.ends_with(".glade") {
 			//TODO regex
 			let name = format_ident!("{}", file_name.replace(".glade", "").to_case(Case::Pascal));
 			let file = File::open(dir_entry.path()).unwrap();
-			generated_token_streams.push(generate_bind(name, file, file_name));
+			generated_token_streams.push(generate_bind(name, file, file_name, static_value));
 		}
 	}
 
@@ -79,7 +79,7 @@ pub fn generate_bind_recursive<T: AsRef<Path>>(directory_path: T, build_script: 
 	true
 }
 
-pub fn generate_bind<T: AsRef<Path>>(name: Ident, file: File, file_include_dir: T) -> TokenStream2 {
+pub fn generate_bind<T: AsRef<Path>>(name: Ident, file: File, file_include_dir: T, static_value: bool) -> TokenStream2 {
 	let mut objects = TokenStream2::new();
 	let mut objects_new = TokenStream2::new();
 
@@ -119,13 +119,8 @@ pub fn generate_bind<T: AsRef<Path>>(name: Ident, file: File, file_include_dir: 
 
 	let include = file_include_dir.as_ref().to_str().unwrap();
 
-	let token_stream = quote!{
-		#[allow(dead_code)]
-		pub struct #name {
-			#objects
-		}
-
-		impl #name {
+	let static_value_token_stream : TokenStream2 = if static_value {
+		quote! {
 			#thread_local! {
 				static OBJECTS: std::sync::Mutex<Option<std::rc::Rc<#name>>> = std::sync::Mutex::new(None);
 			}
@@ -139,6 +134,19 @@ pub fn generate_bind<T: AsRef<Path>>(name: Ident, file: File, file_include_dir: 
 					objects.as_ref().unwrap().clone()
 				})
 			}
+		}
+	} else {
+		TokenStream2::new()
+	};
+
+	let token_stream = quote!{
+		#[allow(dead_code)]
+		pub struct #name {
+			#objects
+		}
+
+		impl #name {
+			#static_value_token_stream
 
 			pub fn new() -> Self {
 				let builder = gtk::Builder::from_string(#include_str!(#include));
