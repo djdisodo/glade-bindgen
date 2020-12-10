@@ -1,3 +1,5 @@
+![crates.io](https://img.shields.io/crates/v/glade-bindgen.svg)
+
 You can generate glade bind with build script
 
 ```
