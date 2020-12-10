@@ -24,7 +24,7 @@ pub mod path_to_glade_files; //you need to include module
 use path_to_glade_files::Example;
 
 fn main() {
-    let button: gtk::Button = &Example::get().your_button_id;
+    let button: &gtk::Button = &Example::get().your_button_id;
     //you can use editor's autocompletion here ^^^^^^^^^^^^
 }
 ```
@@ -32,6 +32,6 @@ fn main() {
 You can also use it as owned value
 ```
 let example = Example::new();
-let button: gtk::Button = &example.your_button_id;
+let button: &gtk::Button = &example.your_button_id;
 //you can use editor's autocompletion here ^^^^^^
 ```
