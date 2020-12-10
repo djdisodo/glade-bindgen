@@ -1,6 +1,6 @@
 [package]
 name = "glade-bindgen"
-version = "0.2.0"
+version = "0.2.1"
 authors = ["djdisodo <djdisodo@gmail.com>"]
 license-file = "LICENSE.md"
 description = "library to generate gtk glade bind"
