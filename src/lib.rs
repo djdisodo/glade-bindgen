@@ -16,9 +16,16 @@ const BUILD_SCRIPT_HEAD_ANNOTATION: &[u8] = include_bytes!("build_script_head_an
 
 pub fn generate_bind_build_script<T: AsRef<Path>>(directory_path: T, static_value: bool) {
 	generate_bind_recursive(&directory_path, true, false, static_value);
-	let mut path = PathBuf::from(directory_path.as_ref());
-	path.push("README_glade-bindgen.txt");
-	std::fs::write(&path, README).unwrap();
+	{
+		let mut path = PathBuf::from(directory_path.as_ref());
+		path.push("README_glade-bindgen.txt");
+		std::fs::write(&path, README).unwrap();
+	}
+	{
+		let mut path - PathBuf::from(directory_path.as_ref());
+		path.push(".gitignore");
+		std::fs::write(&path, "*.rs").unwrap();
+	}
 	println!("cargo:rerun-if-changed={}", path.to_str().unwrap());
 }
 
