@@ -5,7 +5,7 @@ You can generate glade bind with build script
 ```
 #Cargo.toml
 [build-dependencies]
-glade-bindgen = "0.2"
+glade-bindgen = "1.0"
 ```
 
 
