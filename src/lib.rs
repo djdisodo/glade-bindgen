@@ -4,7 +4,7 @@ use std::path::{PathBuf, Path};
 use xml::EventReader;
 use xml::reader::XmlEvent;
 use std::fs::File;
-use syn::export::TokenStream2;
+use proc_macro2::TokenStream as TokenStream2;
 use convert_case::{Case, Casing};
 use std::io::Write;
 use std::process::Command;
