@@ -108,7 +108,7 @@ pub fn generate_bind<T: AsRef<Path>>(name: Ident, file: File, file_include_dir: 
 								pub #id_ident: gtk::#class_ident,
 							}.into());
 							objects_new.extend::<TokenStream2>(quote! {
-								#id_ident: gtk::prelude::BuilderExtManual::get_object(&builder, #id).unwrap(),
+								#id_ident: gtk::prelude::BuilderExtManual::object(&builder, #id).unwrap(),
 							})
 						}
 					}
