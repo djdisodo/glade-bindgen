@@ -2,7 +2,7 @@
 name = "glade-bindgen"
 version = "1.0.0"
 authors = ["djdisodo <djdisodo@gmail.com>"]
-license-file = "LICENSE.md"
+license = "MIT"
 description = "library to generate gtk glade bind"
 repository = "https://github.com/djdisodo/glade-bindgen"
 readme = "README.md"
