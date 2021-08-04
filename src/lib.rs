@@ -8,6 +8,9 @@ use proc_macro2::TokenStream as TokenStream2;
 use convert_case::{Case, Casing};
 use std::io::Write;
 use std::process::Command;
+use regex::Regex;
+use lazy_static::lazy_static;
+use std::borrow::Cow;
 
 const README: &[u8] = include_bytes!("README.txt");
 
@@ -44,9 +47,8 @@ pub fn generate_bind_recursive<T: AsRef<Path>>(directory_path: T, build_script: 
 			if generate_bind_recursive(dir_entry.path(), build_script, format, static_value) {
 				modules.push(file_name);
 			}
-		} else if file_name.ends_with(".glade") {
-			//TODO regex
-			let name = format_ident!("{}", file_name.replace(".glade", "").to_case(Case::Pascal));
+		} else if let Some(name) = remove_ui_extension(&file_name) {
+			let name = format_ident!("{}", name.to_case(Case::Pascal));
 			let file = File::open(dir_entry.path()).unwrap();
 			generated_token_streams.push(generate_bind(name, file, file_name, static_value));
 		}
@@ -190,3 +192,18 @@ pub fn include_glade(args: TokenStream) -> TokenStream {
 	generate_bind(name, file, file_include_dir)
 }
 */
+
+/* Remove the UI extension of a file, and return its bare name */
+fn remove_ui_extension<'a>(file_name: &'a str) -> Option<Cow<'a, str>> {
+	lazy_static! {
+		static ref UI_FILE_REGEX: Regex = Regex::new(r"^(.*)\.glade|\.ui").unwrap();
+	}
+	UI_FILE_REGEX.is_match(&file_name).then(|| UI_FILE_REGEX.replace(&file_name, "$1"))
+}
+
+#[test]
+fn test_remove_ui_extension() {
+	assert_eq!("foo", remove_ui_extension("foo.ui").unwrap());
+	assert_eq!("bar", remove_ui_extension("bar.glade").unwrap());
+	assert_eq!(None, remove_ui_extension("foo.rs"));
+}
