@@ -63,7 +63,7 @@ pub fn generate_bind_recursive<T: AsRef<Path>>(directory_path: T, build_script: 
 		});
 	}
 	for x in generated_token_streams {
-		token_stream.extend::<TokenStream2>(x.into());
+		token_stream.extend::<TokenStream2>(x);
 	}
 
 	let mut mod_path = PathBuf::from(directory_path.as_ref());
@@ -97,16 +97,16 @@ pub fn generate_bind<T: AsRef<Path>>(name: Ident, file: File, file_include_dir: 
 			Ok(XmlEvent::StartElement { name, attributes, .. }) => {
 				if &name.local_name == "object" {
 					let id = attributes.iter().find(| attr | attr.name.local_name == "id");
-					if id.is_some() {
+					if let Some(id) = id {
 						let class = attributes.iter().find(| attr | attr.name.local_name == "class");
-						if class.is_some() {
-							let class = class.unwrap().value.to_owned();
+						if let Some(class) = class {
+							let class = class.value.to_owned();
 							let class_ident = format_ident!("{}", class.replace("Gtk", ""));
-							let id = id.unwrap().value.to_owned();
+							let id = id.value.to_owned();
 							let id_ident = format_ident!("{}", &id);
 							objects.extend::<TokenStream2>(quote!{
 								pub #id_ident: gtk::#class_ident,
-							}.into());
+							});
 							objects_new.extend::<TokenStream2>(quote! {
 								#id_ident: gtk::prelude::BuilderExtManual::object(&builder, #id).unwrap(),
 							})
@@ -164,7 +164,7 @@ pub fn generate_bind<T: AsRef<Path>>(name: Ident, file: File, file_include_dir: 
 			}
 		}
 	};
-	token_stream.into()
+	token_stream
 }
 /*
 struct Args(Ident, LitStr);
