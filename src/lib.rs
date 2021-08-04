@@ -194,11 +194,11 @@ pub fn include_glade(args: TokenStream) -> TokenStream {
 */
 
 /* Remove the UI extension of a file, and return its bare name */
-fn remove_ui_extension<'a>(file_name: &'a str) -> Option<Cow<'a, str>> {
+fn remove_ui_extension(file_name: &str) -> Option<Cow<'_, str>> {
 	lazy_static! {
 		static ref UI_FILE_REGEX: Regex = Regex::new(r"^(.*)\.glade|\.ui").unwrap();
 	}
-	UI_FILE_REGEX.is_match(&file_name).then(|| UI_FILE_REGEX.replace(&file_name, "$1"))
+	UI_FILE_REGEX.is_match(file_name).then(|| UI_FILE_REGEX.replace(file_name, "$1"))
 }
 
 #[test]
