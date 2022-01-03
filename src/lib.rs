@@ -107,10 +107,10 @@ pub fn generate_bind<T: AsRef<Path>>(name: Ident, file: File, file_include_dir: 
 							let id = id.value.to_owned();
 							let id_ident = format_ident!("{}", &id);
 							objects.extend::<TokenStream2>(quote!{
-								pub #id_ident: gtk::#class_ident,
+								pub #id_ident: gtk4::#class_ident,
 							});
 							objects_new.extend::<TokenStream2>(quote! {
-								#id_ident: gtk::prelude::BuilderExtManual::object(&builder, #id).unwrap(),
+								#id_ident: gtk4::Builder::object(&builder, #id).unwrap(),
 							})
 						}
 					}
@@ -159,7 +159,7 @@ pub fn generate_bind<T: AsRef<Path>>(name: Ident, file: File, file_include_dir: 
 			#static_value_token_stream
 
 			pub fn new() -> Self {
-				let builder = gtk::Builder::from_string(#include_str!(#include));
+				let builder = gtk4::Builder::from_string(#include_str!(#include));
 				Self {
 					#objects_new
 				}

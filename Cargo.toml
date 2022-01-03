@@ -1,13 +1,13 @@
 [package]
-name = "glade-bindgen"
+name = "glade-bindgen-gtk4"
 version = "1.2.0"
 authors = ["djdisodo <djdisodo@gmail.com>"]
 license = "MIT"
-description = "library to generate gtk glade bind"
+description = "library to generate gtk glade bind(gtk4)"
 repository = "https://github.com/djdisodo/glade-bindgen"
 readme = "README.md"
 edition = "2018"
-keywords = ["gtk", "glade", "gtk-rs", "gui", "bind"]
+keywords = ["gtk", "glade", "gtk-rs", "gui", "bind", "gtk4"]
 categories = ["development-tools::build-utils", "gui"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
