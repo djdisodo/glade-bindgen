@@ -206,4 +206,5 @@ fn test_remove_ui_extension() {
 	assert_eq!("foo", remove_ui_extension("foo.ui").unwrap());
 	assert_eq!("bar", remove_ui_extension("bar.glade").unwrap());
 	assert_eq!(None, remove_ui_extension("foo.rs"));
+	assert_eq!(None, remove_ui_extension("foo.glade~"));
 }
