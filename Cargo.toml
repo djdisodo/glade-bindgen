@@ -7,7 +7,7 @@ description = "library to generate gtk glade bind(gtk4)"
 repository = "https://github.com/djdisodo/glade-bindgen"
 readme = "README.md"
 edition = "2018"
-keywords = ["gtk", "glade", "gtk-rs", "gui", "bind", "gtk4"]
+keywords = ["gtk", "glade", "gtk-rs", "gui", "bind"]
 categories = ["development-tools::build-utils", "gui"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
