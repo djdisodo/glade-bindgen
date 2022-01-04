@@ -12,7 +12,7 @@ glade-bindgen = "1.2"
 ```
 #build.rs
 fn main() {
-    glade_bindgen::generate_bind_build_script("src/path_to_glade_files", true);
+    glade_bindgen_gtk4::generate_bind_build_script("src/path_to_glade_files", true);
     //disable generating get() method if false===========================^^^^
 }
 ```
@@ -26,7 +26,7 @@ pub mod path_to_glade_files; //you need to include module
 use path_to_glade_files::Example;
 
 fn main() {
-    let button: &gtk::Button = &Example::get().your_button_id;
+    let button: &gtk4::Button = &Example::get().your_button_id;
     //you can use editor's autocompletion here ^^^^^^^^^^^^
 }
 ```
@@ -34,6 +34,6 @@ fn main() {
 You can also use it as owned value
 ```
 let example = Example::new();
-let button: &gtk::Button = &example.your_button_id;
+let button: &gtk4::Button = &example.your_button_id;
 //you can use editor's autocompletion here ^^^^^^
 ```
