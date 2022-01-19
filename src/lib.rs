@@ -165,6 +165,12 @@ pub fn generate_bind<T: AsRef<Path>>(name: Ident, file: File, file_include_dir: 
 				}
 			}
 		}
+
+		impl Default for #name {
+			fn default() -> Self {
+				Self::new()
+			}
+		}
 	};
 	token_stream
 }
